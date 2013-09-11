@@ -1,0 +1,9 @@
+QSEIS
+
+1) Compile and install QSEIS
+
+  > autoreconf -i   # only if 'configure' script is missing
+  > ./configure
+  > make
+  > sudo make install
+
