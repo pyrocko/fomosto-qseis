@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as num
-import logging, os, shutil, sys, glob, math
+import logging, os, shutil, sys, glob, math, copy
 
 from multiprocessing import Pool
 
@@ -13,6 +13,8 @@ from guts import *
 from guts_array import *
 from pyrocko import trace, util, cake
 from pyrocko import gf
+
+Timing = gf.meta.Timing
 
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
@@ -42,7 +44,7 @@ def str_str_vals(vals):
 
 def scl(cs):
     if not cs:
-        return ''
+        return '\n#'
 
     return '\n'+' '.join('(%e,%e)' % (c.real, c.imag) for c in cs)
 
@@ -104,11 +106,11 @@ class QSeisPoleZeroFilter(Object):
                 len(self.poles), scl(self.poles))
 
 class QSeisConfig(Object):
-    cut = Tuple.T(2, gf.meta.Timing.T(), optional=True)
 
-    time_start = Float.T(default=0.0)
-    time_window_min = Float.T(default=900.0)
-    time_reduction_velocity = Float.T(default=0.0)
+    time_region = Tuple.T(2, Timing.T(), default=(
+        Timing('-10'), Timing('+890')))
+
+    cut = Tuple.T(2, Timing.T(), optional=True)
 
     sw_algorithm = Int.T(default=0)
     slowness_window = Tuple.T(4, Float.T(default=0.0))
@@ -128,19 +130,23 @@ class QSeisConfig(Object):
     gradient_resolution_density = Float.T(default=0.0)
 
     wavelet_duration_samples = Float.T(default=0.0)
-    wavelet_type = Int.T(default=1)
+    wavelet_type = Int.T(default=2)
     user_wavelet_samples = List.T(Float.T())
 
     def items(self):
         return dict( self.T.inamevals(self) )
 
 class QSeisConfigFull(QSeisConfig):
+
+    time_start = Float.T(default=0.0)
+    time_reduction_velocity = Float.T(default=0.0)
+    time_window = Float.T(default=900.0)
+
     source_depth = Float.T(default=10.0)
     source_mech = QSeisSourceMech.T(default=QSeisSourceMechMT.D())
 
     receiver_depth = Float.T(default=0.0)
     receiver_distances = List.T(Float.T())
-    time_window = Float.T(default=900.0)
     nsamples = Int.T(default=256)
 
     gf_sw_source_types = Tuple.T(6, Int.T(),
@@ -607,6 +613,8 @@ in the directory %s'''.lstrip() %
                 if vred != 0.0:
                     tmin += distance / vred
 
+                tmin -= (self.config.wavelet_duration_samples-1.0)*deltat*0.5
+
                 tr = trace.Trace( '', '%04i' % itrace, '', comp,
                         tmin=tmin, deltat=deltat, ydata=data[:,itrace+1],
                         meta=dict(
@@ -625,7 +633,7 @@ in the directory %s'''.lstrip() %
             logger.warn('not removing temporary directory: %s' % self.tempdir)
 
 class QSeisGFBuilder(gf.builder.GFBuilder):
-    def __init__(self, store_dir, block_size=None, tmp=None ):
+    def __init__(self, store_dir, shared, block_size=None, tmp=None ):
         self.gfmapping = [
             (MomentTensor( m=symmat6(1,0,0,1,0,0) ), {'r': (0, +1), 't': (3, +1), 'z': (5, +1) }),
             (MomentTensor( m=symmat6(0,0,0,0,1,1) ), {'r': (1, +1), 't': (4, +1), 'z': (6, +1) }),
@@ -635,13 +643,34 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
         self.store = gf.store.Store(store_dir, 'w')
 
         if block_size is None:
-            block_size = (1,1,51)
+            block_size = (1,1,100)
 
         if len(self.store.meta.ns) == 2:
             block_size = block_size[1:]
 
         gf.builder.GFBuilder.__init__(self, self.store.meta, block_size=block_size)
-        self.qseis_config = self.store.get_extra('qseis')
+        baseconf = self.store.get_extra('qseis')
+
+        conf = QSeisConfigFull(**baseconf.items())
+        conf.earthmodel_cake = self.store.meta.earthmodel_cake
+        
+        deltat = 1.0/self.gf_set.sample_rate
+
+        if 'time_window_min' not in shared:
+            d = self.store.make_timing_params(conf.time_region[0], conf.time_region[1])
+            shared['time_window_min'] = d['tlenmax_vred']
+            shared['time_start'] = d['tmin_vred']
+            shared['time_reduction_velocity'] = d['vred'] / km
+
+        time_window_min = shared['time_window_min']
+        conf.time_start = shared['time_start']
+
+        conf.time_reduction_velocity = shared['time_reduction_velocity']
+
+        conf.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
+        conf.time_window = (conf.nsamples-1)*deltat
+
+        self.qseis_config = conf
 
         self.tmp = tmp
         if self.tmp is not None:
@@ -659,9 +688,7 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
 
         gf_filename = '%%s_%gkm_%gkm' % (sz/km, rz/km) 
 
-        conf = QSeisConfigFull(**self.qseis_config.items())
-
-        conf.earthmodel_cake = self.store.meta.earthmodel_cake
+        conf = copy.deepcopy(self.qseis_config)
 
         logger.info('Starting block %i / %i' % 
                 (index+1, self.nblocks))
@@ -672,10 +699,6 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
 
         runner = QSeisRunner(tmp=self.tmp)
 
-        deltat = 1.0/self.gf_set.sample_rate
-        conf.nsamples = nextpow2(int(round(conf.time_window_min / deltat)) + 1)
-        conf.time_window = deltat * (conf.nsamples-1)
-        conf.time_start = -20*deltat
         
         dx = self.gf_set.distance_delta
 
@@ -701,13 +724,6 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
             conf.source_mech = QSeisSourceMechMT(
                 mnn = f(m[0,0]), mee = f(m[1,1]), mdd = f(m[2,2]),
                 mne = f(m[0,1]), mnd = f(m[0,2]), med = f(m[1,2]))
-
-            fn = 'input-%i' % ii
-            fconf = open(fn, 'w')
-            fconf.write(conf.string_for_config())
-            fconf.close()
-            
-            ii += 1
 
             runner.run(conf)
 
@@ -754,7 +770,12 @@ km = 1000.
 
 def init(store_dir):
     qseis = QSeisConfig()
-    
+    qseis.time_region = (
+            gf.meta.Timing('begin-100'),
+            gf.meta.Timing('end+100'))
+
+    qseis.wavelet_duration_samples = 3.0
+
     meta = gf.meta.GFSetTypeA(
             id = 'my_qseis_gf_store',
             ncomponents = 10,
@@ -787,29 +808,32 @@ def init(store_dir):
                     gf.meta.PhaseTabDef(
                         id = 's',
                         definition = '!s')
+
+
             ])
 
     meta.validate()
     return gf.store.Store.create_editables(store_dir, meta=meta, extra={'qseis': qseis})
 
 def __work_block(args):
-    store_dir, iblock = args
-    builder = QSeisGFBuilder(store_dir)
+    store_dir, iblock, shared = args
+    builder = QSeisGFBuilder(store_dir, shared)
     builder.work_block(iblock)
 
 def build(store_dir, force=False, nworkers=None):
 
     gf.store.Store.create_dependants(store_dir, force)
 
-    builder = QSeisGFBuilder(store_dir)
+    shared = {}
+    builder = QSeisGFBuilder(store_dir, shared)
     iblocks = builder.all_block_indices()
      
     if nworkers is None or nworkers > 1:
         p = Pool(nworkers)
-        p.map(__work_block, [ (store_dir, iblock) for iblock in iblocks ])
+        p.map(__work_block, [ (store_dir, iblock, shared) for iblock in iblocks ])
 
     else:
-        map(__work_block, [ (store_dir, iblock) for iblock in iblocks ])
+        map(__work_block, [ (store_dir, iblock, shared) for iblock in iblocks ])
 
 
 if __name__ == '__main__':
