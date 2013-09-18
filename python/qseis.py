@@ -159,7 +159,7 @@ class QSeisConfigFull(QSeisConfig):
 
     receiver_azimuths = List.T(Float.T())
 
-    earthmodel_cake = gf.meta.CakeNDModel.T(optional=True)
+    earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
 
     @staticmethod
     def example():
@@ -168,7 +168,7 @@ class QSeisConfigFull(QSeisConfig):
         conf.receiver_azimuths = [ 0. ]
         conf.time_start = -10.0
         conf.time_reduction_velocity = 15.0
-        conf.earthmodel_cake = cake.load_model().extract(depth_max='cmb')
+        conf.earthmodel_1d = cake.load_model().extract(depth_max='cmb')
         conf.sw_flat_earth_transform = 1
         return conf
     
@@ -182,7 +182,7 @@ class QSeisConfigFull(QSeisConfig):
         
         assert len(self.receiver_distances) > 0
         assert len(self.receiver_distances) == len(self.receiver_azimuths)
-        assert self.earthmodel_cake is not None
+        assert self.earthmodel_1d is not None
 
         d = self.__dict__.copy()
     
@@ -196,7 +196,7 @@ class QSeisConfigFull(QSeisConfig):
         d['str_distances'] = str_float_vals(self.receiver_distances)
         d['str_azimuths'] = str_float_vals(self.receiver_azimuths)
 
-        model_str, nlines = cake_model_to_config(self.earthmodel_cake)
+        model_str, nlines = cake_model_to_config(self.earthmodel_1d)
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
 
@@ -632,7 +632,7 @@ in the directory %s'''.lstrip() %
         else:
             logger.warn('not removing temporary directory: %s' % self.tempdir)
 
-class QSeisGFBuilder(gf.builder.GFBuilder):
+class QSeisGFBuilder(gf.builder.Builder):
     def __init__(self, store_dir, shared, block_size=None, tmp=None ):
         self.gfmapping = [
             (MomentTensor( m=symmat6(1,0,0,1,0,0) ), {'r': (0, +1), 't': (3, +1), 'z': (5, +1) }),
@@ -645,14 +645,14 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
         if block_size is None:
             block_size = (1,1,100)
 
-        if len(self.store.meta.ns) == 2:
+        if len(self.store.config.ns) == 2:
             block_size = block_size[1:]
 
-        gf.builder.GFBuilder.__init__(self, self.store.meta, block_size=block_size)
+        gf.builder.Builder.__init__(self, self.store.config, block_size=block_size)
         baseconf = self.store.get_extra('qseis')
 
         conf = QSeisConfigFull(**baseconf.items())
-        conf.earthmodel_cake = self.store.meta.earthmodel_cake
+        conf.earthmodel_1d = self.store.config.earthmodel_1d
         
         deltat = 1.0/self.gf_set.sample_rate
 
@@ -677,11 +677,11 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
             util.ensuredir(self.tmp)
         
     def work_block(self, index):
-        if len(self.store.meta.ns) == 2:
+        if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \
                     self.get_block_extents(index)
 
-            rz = self.store.meta.receiver_depth
+            rz = self.store.config.receiver_depth
         else:
             (rz, sz, firstx), (rz, sz, lastx), (nr, ns, nx) = \
                     self.get_block_extents(index)
@@ -741,7 +741,7 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
 
                 ig, factor = gfmap[tr.channel]
 
-                if len(self.store.meta.ns) == 2:
+                if len(self.store.config.ns) == 2:
                     args = (sz,x,ig)
                 else:
                     args = (rz,sz,x,ig)
@@ -754,8 +754,8 @@ class QSeisGFBuilder(gf.builder.GFBuilder):
 
                     tr.chop(tmin, tmax)
 
-                gf_tr = gf.store.GFTrace(tr.get_ydata() * factor,
-                        int(round((tr.tmin) / tr.deltat)), tr.deltat)
+                gf_tr = gf.store.GFTrace.from_trace(tr)
+                gf_tr.data *= factor
 
                 self.store.put(args, gf_tr)
 
@@ -771,12 +771,17 @@ km = 1000.
 def init(store_dir):
     qseis = QSeisConfig()
     qseis.time_region = (
-            gf.meta.Timing('begin-100'),
+            gf.meta.Timing('begin-50'),
+            gf.meta.Timing('end+100'))
+
+    qseis.cut = (
+            gf.meta.Timing('begin-50'),
             gf.meta.Timing('end+100'))
 
     qseis.wavelet_duration_samples = 3.0
+    qseis.sw_flat_earth_transform = 1
 
-    meta = gf.meta.GFSetTypeA(
+    config = gf.meta.ConfigTypeA(
             id = 'my_qseis_gf_store',
             ncomponents = 10,
             sample_rate = 0.2,
@@ -787,33 +792,33 @@ def init(store_dir):
             distance_min = 100*km,
             distance_max = 1000*km,
             distance_delta = 10*km,
-            earthmodel_cake = cake.load_model().extract(depth_max='cmb'),
+            earthmodel_1d = cake.load_model().extract(depth_max='cmb'),
             modelling_code_id = 'qseis',
-            phase_tab_defs = [
-                    gf.meta.PhaseTabDef(
+            tabulated_phases = [
+                    gf.meta.TPDef(
                         id = 'begin',
                         definition = 'p,P,p\\,P\\,Pv_(cmb)p'),
-                    gf.meta.PhaseTabDef(
+                    gf.meta.TPDef(
                         id = 'end',
                         definition = '2.5'),
-                    gf.meta.PhaseTabDef(
+                    gf.meta.TPDef(
                         id = 'P',
                         definition = '!P'),
-                    gf.meta.PhaseTabDef(
+                    gf.meta.TPDef(
                         id = 'S',
                         definition = '!S'),
-                    gf.meta.PhaseTabDef(
+                    gf.meta.TPDef(
                         id = 'p',
                         definition = '!p'),
-                    gf.meta.PhaseTabDef(
+                    gf.meta.TPDef(
                         id = 's',
                         definition = '!s')
 
 
             ])
 
-    meta.validate()
-    return gf.store.Store.create_editables(store_dir, meta=meta, extra={'qseis': qseis})
+    config.validate()
+    return gf.store.Store.create_editables(store_dir, config=config, extra={'qseis': qseis})
 
 def __work_block(args):
     store_dir, iblock, shared = args
