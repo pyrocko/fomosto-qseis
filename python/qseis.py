@@ -613,7 +613,7 @@ in the directory %s'''.lstrip() %
                 if vred != 0.0:
                     tmin += distance / vred
 
-                tmin -= (self.config.wavelet_duration_samples-1.0)*deltat*0.5
+                tmin += deltat
 
                 tr = trace.Trace( '', '%04i' % itrace, '', comp,
                         tmin=tmin, deltat=deltat, ydata=data[:,itrace+1],
@@ -778,7 +778,7 @@ def init(store_dir):
             gf.meta.Timing('begin-50'),
             gf.meta.Timing('end+100'))
 
-    qseis.wavelet_duration_samples = 3.0
+    qseis.wavelet_duration_samples = 0.001
     qseis.sw_flat_earth_transform = 1
 
     config = gf.meta.ConfigTypeA(
