@@ -18,27 +18,27 @@ c
       double precision suppress,ros,vps,vss,fcut
       double precision rot(3,3),sm(3,3),swap(3,3)
       double precision resolut(3),t0(nrmax)
-      character*80 outfile0(7),comments*180
+      character*80 outfile0(7)
 c
 c     source parameters
 c     =================
 c
       pi=4.d0*datan(1.d0)
       deg2rad=pi/180.d0
-      call getdata(unit,comments)
-      read(comments,*)zs
+      call skip_comments(unit)
+      read(unit,*)zs
       zs=dmax1(0.d0,km2m*zs)
 c
 c     receiver parameters
 c     ===================
 c
-      call getdata(unit,comments)
-      read(comments,*)zr
+      call skip_comments(unit)
+      read(unit,*)zr
       zr=km2m*zr
-      call getdata(unit,comments)
-      read(comments,*)ieqdis,kmordeg
-      call getdata(unit,comments)
-      read(comments,*)nr
+      call skip_comments(unit)
+      read(unit,*)ieqdis,kmordeg
+      call skip_comments(unit)
+      read(unit,*)nr
       if(nr.gt.nrmax)then
         stop 'Error in input: nr > nrmax!'  
       endif
@@ -64,14 +64,14 @@ c
         enddo
       endif
 c
-      call getdata(unit,comments)
-      read(comments,*)tstart,twindow,nt
+      call skip_comments(unit)
+      read(unit,*)tstart,twindow,nt
       if(twindow.le.0.d0.or.nt.le.0)then
         stop 'Error in input: time window or sampling no <= 0!'  
       endif
 c
-      call getdata(unit,comments)
-      read(comments,*)iv0,v0
+      call skip_comments(unit)
+      read(unit,*)iv0,v0
       if(iv0.eq.1)then
         v0=km2m*v0
       else if(v0.gt.0.d0)then
@@ -85,13 +85,13 @@ c
 c     wavenumber integration parameters
 c     =================================
 c
-      call getdata(unit,comments)
-      read(comments,*)ndtrans
+      call skip_comments(unit)
+      read(unit,*)ndtrans
       if(ndtrans.lt.0.or.ndtrans.gt.ndtransmax)then
         stop 'Error in input: wrong select of integration algorithm!'
       endif
-      call getdata(unit,comments)
-      read(comments,*)(slw(j),j=1,4)
+      call skip_comments(unit)
+      read(unit,*)(slw(j),j=1,4)
       do j=1,4
         slw(j)=slw(j)/km2m
       enddo
@@ -103,12 +103,12 @@ c
       else
         fullwave=.false.
       endif
-      call getdata(unit,comments)
-      read(comments,*)srate
+      call skip_comments(unit)
+      read(unit,*)srate
       if(srate.lt.1.d0)srate=1.d0
 c
-      call getdata(unit,comments)
-      read(comments,*)suppress
+      call skip_comments(unit)
+      read(unit,*)suppress
       if(suppress.le.0.d0.or.suppress.ge.1.d0)then
         suppress=dexp(-1.d0)
         print *,'warning in qsmain: aliasing suppression'
@@ -119,28 +119,28 @@ c
 c     partial solution parameters
 c     ===========================
 c
-      call getdata(unit,comments)
-      read(comments,*)isurf
+      call skip_comments(unit)
+      read(unit,*)isurf
       if(isurf.lt.0.or.isurf.gt.2)then
         stop 'Error: wrong switch for filtering surface reflection!'
       else if(isurf.eq.2.and.zr.gt.0.d0)then
         stop 'Error: filtering surface multiples for zr > 0!'
       endif
-      call getdata(unit,comments)
-      read(comments,*)ipath,pathdepth
+      call skip_comments(unit)
+      read(unit,*)ipath,pathdepth
       pathdepth=pathdepth*km2m
       if(ipath.eq.1.and.(pathdepth.lt.zs.or.pathdepth.lt.zr))then
         print *,'warning: condition for path filter is not satisfied,'
         print *,'==> path filter will not be selected!'
         ipath=0
       endif
-      call getdata(unit,comments)
-      read(comments,*)npar
+      call skip_comments(unit)
+      read(unit,*)npar
       if(npar.ge.1)then
         ipartial=1
         do i=1,npar
-          call getdata(unit,comments)
-          read(comments,*)zup(i),zlow(i),ipsv(i)
+          call skip_comments(unit)
+          read(unit,*)zup(i),zlow(i),ipsv(i)
           if(ipsv(i).le.0.or.ipsv(i).ge.5)then
             stop ' Error in qsmain: wrong partial solution selection!'
           endif
@@ -152,36 +152,36 @@ c
 c     wavelet parameters
 c     ==================
 c
-      call getdata(unit,comments)
-      read(comments,*)taunorm,wdeg
+      call skip_comments(unit)
+      read(unit,*)taunorm,wdeg
       if(wdeg.lt.0.or.wdeg.gt.2)then
         stop ' Error in qsmain: wrong wavelet selection!'
       else if(wdeg.eq.0)then
-        call getdata(unit,comments)
-        read(comments,*)nn0
+        call skip_comments(unit)
+        read(unit,*)nn0
         read(unit,*)(wv0(i),i=1,nn0)
       endif
 c
 c     seimometer parameters
 c     =====================
 c
-      call getdata(unit,comments)
-      read(comments,*)asm
-      call getdata(unit,comments)
-      read(comments,*)nroot
+      call skip_comments(unit)
+      read(unit,*)asm
+      call skip_comments(unit)
+      read(unit,*)nroot
       read(unit,*)(root(i),i=1,nroot)
-      call getdata(unit,comments)
-      read(comments,*)npole
+      call skip_comments(unit)
+      read(unit,*)npole
       read(unit,*)(pole(i),i=1,npole)
 c
 c     output files
 c     ============
 c
       varbtxt='U'
-      call getdata(unit,comments)
-      read(comments,*)(ssel(istp),istp=1,6)
-      call getdata(unit,comments)
-      read(comments,*)(outfile0(istp),istp=1,6)
+      call skip_comments(unit)
+      read(unit,*)(ssel(istp),istp=1,6)
+      call skip_comments(unit)
+      read(unit,*)(outfile0(istp),istp=1,6)
       do istp=1,6
         if(ssel(istp).ne.1)ssel(istp)=0
         do flen0=80,1,-1
@@ -196,12 +196,13 @@ c
           flen(i,istp)=flen0+3
         enddo
       enddo
-      call getdata(unit,comments)
-      read(comments,*)ssel(7)
+      call skip_comments(unit)
+      read(unit,*)ssel(7)
+      backspace(unit)
       if(ssel(7).eq.1)then
-        read(comments,*)ssel(7),(mtensor(i),i=1,6),outfile0(7)
+        read(unit,*)ssel(7),(mtensor(i),i=1,6),outfile0(7)
       else if(ssel(7).eq.2)then
-        read(comments,*)ssel(7),mis,mcl,mdc,st,di,ra,outfile0(7)
+        read(unit,*)ssel(7),mis,mcl,mdc,st,di,ra,outfile0(7)
         st=st*deg2rad
         di=di*deg2rad
         ra=ra*deg2rad
@@ -268,8 +269,8 @@ c
         enddo
         ssel(7)=0
       endif
-      call getdata(unit,comments)
-      read(comments,*)iazi
+      call skip_comments(unit)
+      read(unit,*)iazi
       if(iazi.eq.0)then
         read(unit,*)azimuth(1)
         do i=2,nr
@@ -301,16 +302,16 @@ c
 c     global model parameters
 c     =======================
 c
-      call getdata(unit,comments)
-      read(comments,*)iflat
-      call getdata(unit,comments)
-      read(comments,*)(resolut(i),i=1,3)
+      call skip_comments(unit)
+      read(unit,*)iflat
+      call skip_comments(unit)
+      read(unit,*)(resolut(i),i=1,3)
       do i=1,3
         if(resolut(i).le.0.d0)resolut(i)=0.1d0
         resolut(i)=1.d-02*resolut(i)
       enddo
-      call getdata(unit,comments)
-      read(comments,*)l
+      call skip_comments(unit)
+      read(unit,*)l
       if(l.gt.lmax)then
         stop ' Error in input: to large number of layers!'
       endif
@@ -319,8 +320,8 @@ c     multilayered model parameters
 c     =============================
 c
       do i=1,l
-        call getdata(unit,comments)
-        read(comments,*)j,h(i),vp(i),vs(i),ro(i),qp(i),qs(i)
+        call skip_comments(unit)
+        read(unit,*)j,h(i),vp(i),vs(i),ro(i),qp(i),qs(i)
 c
 c       input units:    -,km,  km/s, km/s, g/cm^3,-,-
 c
@@ -331,8 +332,8 @@ c
         if(vs(i).le.vspmin*vp(i))vs(i)=0.9d0*vspmin*vp(i)
       enddo
 c
-      call getdata(unit,comments)
-      read(comments,*)lrs
+      call skip_comments(unit)
+      read(unit,*)lrs
       if(lrs.gt.lmax)then
         stop ' Error in input: to large number of layers!'
       endif
@@ -341,8 +342,8 @@ c     multilayered model parameters
 c     =============================
 c
       do i=1,lrs
-        call getdata(unit,comments)
-        read(comments,*)j,hrs(i),vprs(i),vsrs(i),rors(i),qprs(i),qsrs(i)
+        call skip_comments(unit)
+        read(unit,*)j,hrs(i),vprs(i),vsrs(i),rors(i),qprs(i),qsrs(i)
 c
 c       input units:    -,km,  km/s, km/s, g/cm^3,-,-
 c
