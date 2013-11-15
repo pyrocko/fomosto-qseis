@@ -1,6 +1,6 @@
-AC_INIT([qseis], [1.0])
+AC_INIT([qseis], [1.1])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
-AM_PATH_PYTHON([2.5])
+AM_PATH_PYTHON([2.6])
 AC_PROG_F77
 AC_CONFIG_FILES([
                  Makefile
