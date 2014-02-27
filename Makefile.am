@@ -1,2 +1,1 @@
-SUBDIRS = src python
-
+SUBDIRS = src
