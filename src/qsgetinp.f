@@ -198,7 +198,9 @@ c
       enddo
       call skip_comments(unit)
       read(unit,*)ssel(7)
-      backspace(unit)
+      if (ssel(7) .ne. 0) then
+          backspace(unit)
+      endif
       if(ssel(7).eq.1)then
         read(unit,*)ssel(7),(mtensor(i),i=1,6),outfile0(7)
       else if(ssel(7).eq.2)then
