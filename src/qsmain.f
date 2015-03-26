@@ -23,7 +23,7 @@ c
       print *,'#       Q  QQ       S    E         I         S       #'
       print *,'#        QQQQ   SSSS     EEEEE    III    SSSS        #'
       print *,'#                                                    #'
-      print *,'#                  (Version 2006)                    #'
+      print *,'#                  (Version 2006a)                   #'
       print *,'#                                                    #'
       print *,'#                                                    #'
       print *,'#                      by                            #'
@@ -64,7 +64,7 @@ c
       runtime=time()-runtime
       write(*,'(a)')' #############################################'
       write(*,'(a)')' #                                           #'
-      write(*,'(a)')' #      End of computations with qseis06     #'
+      write(*,'(a)')' #      End of computations with qseis06a    #'
       write(*,'(a)')' #                                           #'
       write(*,'(a,i10,a)')' #       Run time: ',runtime,
      +                                           ' sec            #'

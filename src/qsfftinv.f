@@ -48,10 +48,10 @@ c
 c
 c     seismometer filtering
 c
-      if(asm.ne.1.d0)then
+      if(cdabs(asm).ne.1.d0)then
         do lf=1,nf
           do ir=1,nr
-            cy(lf,ir)=dcmplx(asm,0.d0)*cy(lf,ir)
+            cy(lf,ir)=asm*cy(lf,ir)
           enddo
         enddo
       endif

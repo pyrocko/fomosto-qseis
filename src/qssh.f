@@ -101,7 +101,7 @@ c===============================================================================
 c
       do istp=1,6
         do i=1,2
-          b(i,istp)=dcmplx(sfct0(i+4,istp)+k*sfct1(i+4,istp),0.d0)
+          b(i,istp)=sfct0(i+4,istp)+dcmplx(k,0.d0)*sfct1(i+4,istp)
         enddo
       enddo
       do i=1,2

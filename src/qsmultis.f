@@ -51,13 +51,13 @@ c
               open(unit,file=outfile(icmp,istp),status='old')
               read(unit,'(a1)')textline
               do lf=1,nf
-                read(unit,*)t(2*lf-1),(y1(ir),ir=1,nr)
-                read(unit,*)t(2*lf),(y2(ir),ir=1,nr)
+                read(unit,*,end=100)t(2*lf-1),(y1(ir),ir=1,nr)
+                read(unit,*,end=100)t(2*lf),(y2(ir),ir=1,nr)
                 do ir=1,nr
                   grns(lf,icmp,ir,istp)=dcmplx(y1(ir),y2(ir))
                 enddo
               enddo
-              close(unit)
+100           close(unit)
             endif
           enddo
         enddo

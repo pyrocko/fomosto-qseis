@@ -6,16 +6,16 @@ c     nrmax: max. number of traces;
 c     nfmax: max. number of frequency samples
 c
       integer nzmax,lmax,nrmax,nfmax,ndtransmax
-      parameter(lmax=1500)
+      parameter(lmax=2500)
       parameter(nzmax=lmax+2)
-      parameter(nrmax=101,nfmax=2048)
+      parameter(nrmax=101,nfmax=8192)
       parameter(ndtransmax=4)
 c
 c     INDEX PARAMETERS FOR BESSEL FUNCTION TABLES
 c     ===========================================
 c
       integer nbsjmax
-      parameter(nbsjmax=30000)
+      parameter(nbsjmax=150000)
 c
 c     INDEX PARAMETERS FOR SEISMOMETER CHARACTERISTICS
 c     ================================================
@@ -132,7 +132,7 @@ c     source parameters
 c
       integer ls,ms(6),ics(6)
       double precision zs
-      double precision sfct0(6,6),sfct1(6,6)
+      double complex sfct0(6,6),sfct1(6,6)
       common /source/ zs,sfct0,sfct1,ls,ms,ics
 c
 c     path filtering
@@ -159,7 +159,7 @@ c
 c     seismometer filtering
 c
       integer nroot,npole
-      double precision asm
+      double complex asm
       double complex root(nrootmax),pole(npolemax) 
       common /seismometer/ root,pole,asm,nroot,npole
 c

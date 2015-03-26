@@ -112,7 +112,7 @@ c
 c       determine layer no of each depth
 c
         li=1
-        zswap=h(1)
+        zswap=hrs(1)
         nnors(1)=1
         do l=2,lprs
           if(z(l).ge.zswap.and.li.lt.n0rs)then

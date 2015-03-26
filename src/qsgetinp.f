@@ -560,7 +560,7 @@ c
         vps=vps*rr/rr0
         vss=vss*rr/rr0
       endif
-      call qssource(ros,vps,vss)
+      call qssource(ros,dcmplx(vps,0.d0),dcmplx(vss,0.d0))
 c
       if(v0.gt.0.d0)then
         v00=1.d0/v0

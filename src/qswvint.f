@@ -5,7 +5,7 @@ c
 c
       include 'qsglobal.h'
 c
-      integer istp,n,nrec,l,lf,lf1,i,ir,nrr,nrs
+      integer istp,n,nrec,l,lf,lf1,i,ir,nrr,nrs,ns
       integer ik,ik1,ik2,nk1,nk2,nbsj,idtrans
       double precision f,fcut,r0,k,kmax,kc,dk,slwn
       double precision pi,pi2,rr,rs,delta,cmax,ymax,yabs
@@ -41,6 +41,7 @@ c
       carec=dcmplx(1.d0/(ro(nrec)*vp(nrec)**2),0.d0)
       cbrec=dcmplx(2.d0*(vs(nrec)/vp(nrec))**2,0.d0)
 c
+      ns=nno(ls)
       l=min0(ls,lzr)
       n=nno(l)
       if(vs(n).le.vspmin*vp(n).or.
@@ -84,6 +85,7 @@ c
       if(fullwave)then
         f=0.d0
         call qsqmodel(f)
+        call qssource(ro(ns),cvp(ns),cvs(ns))
         kc=0.d0
         ik=1
         ymax=0.d0
@@ -110,6 +112,7 @@ c
 c
         f=fcut
         call qsqmodel(f)
+        call qssource(ro(ns),cvp(ns),cvs(ns))
         kc=1.15d0*pi2*f/cmax
         ik=1
         ymax=0.d0
@@ -157,6 +160,7 @@ c
         write(*,'(a,$)')' file name for kernel functions: '
         read(*,'(a)')kernels
         call qsqmodel(f)
+        call qssource(ro(ns),cvp(ns),cvs(ns))
         open(21,file=kernels,status='unknown')
         write(21,'(a)')'    slowness   '
      &   //'    ex1r        ex1i        ex2r        ex2i    '
@@ -258,6 +262,7 @@ c
       do lf=lf1,nf
         f=dble(lf-1)*df
         call qsqmodel(f)
+        call qssource(ro(ns),cvp(ns),cvs(ns))
 c
         do i=1,4
 c          kcut(i)=kcut1(i)+dble(lf-1)*(kcut2(i)-kcut1(i))/dble(nf)
@@ -278,7 +283,7 @@ c
             y(1,istp,ik)=cy(1,istp)
             y(2,istp,ik)=( cy(3,istp)+cics(istp)*cy(5,istp))/c2
             y(3,istp,ik)=(-cy(3,istp)+cics(istp)*cy(5,istp))/c2
-            y(4,istp,ik)=carec*cy(2,istp)+cbrec*ck*cy(3,istp)
+            y(4,istp,ik)=carec*cy(2,istp)-cbrec*ck*cy(3,istp)
           enddo
         enddo
         do idtrans=1,ndtrans

@@ -20,6 +20,7 @@ c
       double complex y1(4,2),yup(4,2),ylw(4,2),orth(2,2)
       double complex coef(4,4),cnorm(2),coefrs(2,2),brs(2,6)
       logical rsite
+      logical dynamic(nzmax)
 c
       double complex c2
 	data c2/(2.d0,0.d0)/
@@ -34,6 +35,13 @@ c     determination of starting upper sublayer
 c
       rsite=.false.
 c
+      do l=1,lp
+        n=nno(l)
+        dynamic(l)=isurf.ne.0.or.n0rs.gt.0.or.
+     &             cdabs(kp(n)-ks(n)).gt.0.1d0*k.or.
+     &             cdabs(kp(n)-ks(n))*hp(l).gt.0.1d0.or.
+     &             .not.(pup(l).and.pdw(l).and.svup(l).and.svdw(l))
+      enddo
       if(lup.eq.1.and.isurf.eq.0)then
         do j=1,2
           do i=1,4
@@ -64,7 +72,7 @@ c
 c
 c       determination of propagation matrix
 c
-        call qsve2am(n,ck,yup,c0,2,rsite)
+        call qsve2am(n,ck,0.d0,dynamic(l-1),yup,c0,2,rsite)
         pwave=cdexp(-kp(n)*ch0)
         swave=cdexp(-ks(n)*ch0)
 c
@@ -113,20 +121,20 @@ c
           c1(2,1)=(0.d0,0.d0)
           c1(2,2)=(0.d0,0.d0)
           if(l-1.eq.lzr)then
-            call qsve2am(n,ck,y0,c0,2,rsite)
+            call qsve2am(n,ck,0.d0,dynamic(l-1),y0,c0,2,rsite)
             c0(2,1)=(0.d0,0.d0)
             c0(2,2)=(0.d0,0.d0)
-            call qsam2ve(n,ck,y0,c0,2,rsite)
+            call qsam2ve(n,ck,0.d0,dynamic(l-1),y0,c0,2,rsite)
           endif
         endif
         if(.not.svdw(l-1))then
           c1(4,1)=(0.d0,0.d0)
           c1(4,2)=(0.d0,0.d0)
           if(l-1.eq.lzr)then
-            call qsve2am(n,ck,y0,c0,2,rsite)
+            call qsve2am(n,ck,0.d0,dynamic(l-1),y0,c0,2,rsite)
             c0(4,1)=(0.d0,0.d0)
             c0(4,2)=(0.d0,0.d0)
-            call qsam2ve(n,ck,y0,c0,2,rsite)
+            call qsam2ve(n,ck,0.d0,dynamic(l-1),y0,c0,2,rsite)
           endif
         endif
 c
@@ -142,7 +150,7 @@ c
 c        c1(3,2)=c1(3,2)
         c1(4,2)=c1(4,2)*swave*swave
 c
-        call qsam2ve(n,ck,yup,c1,2,rsite)
+        call qsam2ve(n,ck,hp(l-1),dynamic(l-1),yup,c1,2,rsite)
 c
         if(l.eq.lzr)call cmemcpy(yup,y0,8)
       enddo
@@ -170,7 +178,7 @@ c
 c
 c       determination of propagation matrix
 c
-        call qsve2am(n,ck,ylw,c0,2,rsite)
+        call qsve2am(n,ck,0.d0,dynamic(l),ylw,c0,2,rsite)
         pwave=cdexp(-kp(n)*ch0)
         swave=cdexp(-ks(n)*ch0)
 c
@@ -201,20 +209,20 @@ c
           c1(1,1)=(0.d0,0.d0)
           c1(1,2)=(0.d0,0.d0)
           if(l+1.eq.lzr)then
-            call qsve2am(n,ck,y0,c0,2,rsite)
+            call qsve2am(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
             c0(1,1)=(0.d0,0.d0)
             c0(1,2)=(0.d0,0.d0)
-            call qsam2ve(n,ck,y0,c0,2,rsite)
+            call qsam2ve(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
           endif
         endif
         if(.not.svup(l))then
           c1(3,1)=(0.d0,0.d0)
           c1(3,2)=(0.d0,0.d0)
           if(l+1.eq.lzr)then
-            call qsve2am(n,ck,y0,c0,2,rsite)
+            call qsve2am(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
             c0(3,1)=(0.d0,0.d0)
             c0(3,2)=(0.d0,0.d0)
-            call qsam2ve(n,ck,y0,c0,2,rsite)
+            call qsam2ve(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
           endif
         endif
         if(.not.pdw(l))then
@@ -248,7 +256,7 @@ c
         c1(3,2)=c1(3,2)*swave*swave
 c        c1(4,2)=c1(4,2)
 c
-        call qsam2ve(n,ck,ylw,c1,2,rsite)
+        call qsam2ve(n,ck,-hp(l),dynamic(l),ylw,c1,2,rsite)
         if(l.gt.ls.and.l.eq.lzr)call cmemcpy(ylw,y0,8)
       enddo
 c
@@ -258,7 +266,7 @@ c===============================================================================
 c
       do istp=1,6
         do i=1,4
-          b(i,istp)=dcmplx(sfct0(i,istp)+k*sfct1(i,istp),0.d0)
+          b(i,istp)=sfct0(i,istp)+ck*sfct1(i,istp)
         enddo
       enddo
       do i=1,4
@@ -313,7 +321,7 @@ c
 c
 c         determination of propagation matrix
 c
-          call qsve2am(n,ck,ylw,c0,2,rsite)
+          call qsve2am(n,ck,0.d0,dynamic(l),ylw,c0,2,rsite)
           pwave=cdexp(-kp(n)*ch0)
           swave=cdexp(-ks(n)*ch0)
 c
@@ -344,20 +352,20 @@ c
             c1(1,1)=(0.d0,0.d0)
             c1(1,2)=(0.d0,0.d0)
             if(l+1.eq.lzr)then
-              call qsve2am(n,ck,y0,c0,2,rsite)
+              call qsve2am(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
               c0(1,1)=(0.d0,0.d0)
               c0(1,2)=(0.d0,0.d0)
-              call qsam2ve(n,ck,y0,c0,2,rsite)
+              call qsam2ve(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
             endif
           endif
           if(.not.svup(l))then
             c1(3,1)=(0.d0,0.d0)
             c1(3,2)=(0.d0,0.d0)
             if(l+1.eq.lzr)then
-              call qsve2am(n,ck,y0,c0,2,rsite)
+              call qsve2am(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
               c0(3,1)=(0.d0,0.d0)
               c0(3,2)=(0.d0,0.d0)
-              call qsam2ve(n,ck,y0,c0,2,rsite)
+              call qsam2ve(n,ck,0.d0,dynamic(l),y0,c0,2,rsite)
             endif
           endif
           if(.not.pdw(l))then
@@ -391,7 +399,7 @@ c
           c1(3,2)=c1(3,2)*swave*swave
 c          c1(4,2)=c1(4,2)
 c
-          call qsam2ve(n,ck,ylw,c1,2,rsite)
+          call qsam2ve(n,ck,-hp(l),dynamic(l),ylw,c1,2,rsite)
           if(l.gt.ls.and.l.eq.lzr)call cmemcpy(ylw,y0,8)
         enddo
         do i=1,4
@@ -431,7 +439,7 @@ c       for receiver-site structure different from source-site structure
 c
         n=nno(lzr)
         do istp=1,6
-          call qsve2am(n,ck,y(1,istp),cinc(1,istp),1,rsite)
+          call qsve2am(n,ck,0.d0,.true.,y(1,istp),cinc(1,istp),1,rsite)
         enddo
 c
 c       determination of starting upper sublayer
@@ -469,7 +477,7 @@ c
 c
 c         determination of propagation matrix
 c
-          call qsve2am(n,ck,yup,c0,2,rsite)
+          call qsve2am(n,ck,0.d0,.true.,yup,c0,2,rsite)
           pwave=cdexp(-kprs(n)*ch0)
           swave=cdexp(-ksrs(n)*ch0)
 c
@@ -503,11 +511,11 @@ c
 c          c1(3,2)=c1(3,2)
           c1(4,2)=c1(4,2)*swave*swave
 c
-          call qsam2ve(n,ck,yup,c1,2,rsite)
+          call qsam2ve(n,ck,hprs(l-1),.true.,yup,c1,2,rsite)
           if(l.eq.lzrrs)call cmemcpy(yup,y0,8)
         enddo
         n=nnors(lprs)
-        call qsve2am(n,ck,yup,c0,2,rsite)
+        call qsve2am(n,ck,0.d0,.true.,yup,c0,2,rsite)
         do istp=1,6
           brs(1,istp)=cinc(1,istp)
           brs(2,istp)=cinc(3,istp)
@@ -579,7 +587,7 @@ c
         endif
 c
         do istp=1,6
-          call qsve2am(1,ck,y(1,istp),b0(1,istp),1,rsite)
+          call qsve2am(1,ck,0.d0,.true.,y(1,istp),b0(1,istp),1,rsite)
 
           b(1,istp)=-yup(2,1)*b0(1,istp)-yup(2,2)*b0(3,istp)
           b(2,istp)=-yup(4,1)*b0(1,istp)-yup(4,2)*b0(3,istp)
@@ -595,7 +603,7 @@ c
           endif
           b0(2,istp)=b(1,istp)
           b0(4,istp)=b(2,istp)
-          call qsam2ve(1,ck,y(1,istp),b0(1,istp),1,rsite)
+          call qsam2ve(1,ck,0.d0,.true.,y(1,istp),b0(1,istp),1,rsite)
         enddo
       endif
       return
