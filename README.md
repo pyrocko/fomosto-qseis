@@ -3,7 +3,7 @@
 Code to calculate synthetic seismograms based on a layered viscoelastic
 half-space earth model.
 
-QSEIS2D 2014 has been written by Rongjiang Wang.
+QSEIS has been written by Rongjiang Wang.
 
 Packaging has been done by Sebastian Heimann.
 
