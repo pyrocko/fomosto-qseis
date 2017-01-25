@@ -1,4 +1,4 @@
-language: python
+language: fortran
 
 matrix:
     include:
@@ -10,18 +10,12 @@ matrix:
 addons:
     apt:
         packages: [ gfortran ]
-        # , libatlas-dev, libopenblas-dev ]
-
-before_install:
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
-    # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
 
 install:
     - autoreconf -i; ./configure; make
+
+script:
+    - echo "All done!"
 
 notifications:
     email: false
