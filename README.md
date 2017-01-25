@@ -1,4 +1,5 @@
 # QSEIS (packaged as Fomosto backend)
+[![Build Status](https://travis-ci.org/pyrocko/fomosto-qseis.svg?branch=master)](https://travis-ci.org/pyrocko/fomosto-qseis)
 
 Code to calculate synthetic seismograms based on a layered viscoelastic
 half-space earth model.
